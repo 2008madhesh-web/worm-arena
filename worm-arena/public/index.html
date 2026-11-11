@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Worm Arena</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Bagel+Fat+One&family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#0b0f1a;--panel:rgba(255,255,255,.12);--text:#e8ecf5}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;overscroll-behavior:none}
@@ -66,39 +66,65 @@ button,.b,#boost{transition:transform .15s ease,box-shadow .2s ease,background .
 .b.danger{background:rgba(255,77,109,.16);border-color:rgba(255,77,109,.6);color:#ff8fa3}
 .b.danger.sure{background:#ff4d6d;color:#fff}
 body.br #boost{left:auto;right:22px}
+
+/* ---- redesign: underground ---- */
+:root{--bg:#1a100c;--text:#f6e7d8;--pink:#ff8fa3;--teal:#5ef2d6}
+body,button,input,.lbl{font-family:"Bricolage Grotesque",system-ui,sans-serif}
+.logo,.b,.code,.codein,#boost,#over h2,#set h3{font-family:"Bagel Fat One","Bricolage Grotesque",sans-serif;font-weight:400}
+#home{background:#1a100c;backdrop-filter:none;-webkit-backdrop-filter:none;overflow-y:auto;align-items:flex-start}
+#home .card{margin:auto;position:relative;z-index:2;padding:20px 0}
+#scene,#fx{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#fx{z-index:1}
+.logo{background:none;color:var(--pink);animation:none;filter:none;letter-spacing:0;font-size:clamp(48px,15vw,66px);line-height:1;text-shadow:0 4px 0 #8a3447,0 0 30px rgba(255,143,163,.4)}
+.logo i{display:inline-block;font-style:normal}
+.logo span{display:block;font-size:1em;letter-spacing:0;margin:0}
+.tag{text-transform:none;letter-spacing:0;font-size:16px;opacity:.85}
+#home input{border-radius:22px 18px 24px 16px/18px 24px 16px 22px;background:rgba(0,0,0,.4);border:2px solid #5a3a2a;box-shadow:inset 0 3px 8px rgba(0,0,0,.5)}
+#home input:focus{border-color:var(--teal);box-shadow:inset 0 3px 8px rgba(0,0,0,.5),0 0 0 3px rgba(94,242,214,.25)}
+.b{border-radius:26px 20px 28px 18px/20px 28px 18px 26px;background:linear-gradient(#5f3d2b,#3d2519);border:0;color:var(--text);letter-spacing:.5px;font-size:16px;box-shadow:0 4px 0 #1f120c,inset 0 2px 0 rgba(255,255,255,.14)}
+.b:active{transform:translateY(3px);box-shadow:0 1px 0 #1f120c}
+.b.play{color:#4a0f1f;font-size:26px;background:repeating-linear-gradient(90deg,#ff8fa3 0 15px,#ee6f89 15px 19px);box-shadow:0 5px 0 #8a3447,0 0 34px rgba(255,143,163,.35);animation:none}
+.b.ghost{background:none;box-shadow:none;opacity:.75}
+.seg .b.on{background:linear-gradient(#5ef2d6,#32bfa3);color:#08332a}
+.code{color:var(--teal);text-shadow:0 0 18px rgba(94,242,214,.6)}
+.lbl,.foot{letter-spacing:0;text-transform:none;font-size:14px;opacity:.75}
+.plist>div{background:rgba(0,0,0,.35);border-radius:14px 10px 14px 10px}
+.sw.on{background:var(--teal)}
+#over button{background:var(--pink);color:#4a0f1f}
+#set .card{background:#2a1a12;border-color:#5a3a2a}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
-<div id="home"><div class="card">
-<div class="logo">WORM<span>ARENA</span></div>
+<div id="home"><canvas id="scene"></canvas><canvas id="fx"></canvas><div class="card">
+<div class="logo" id="logo"></div>
 <div class="tag">Eat. Grow. Outlast.</div>
 <input id="nick" maxlength="14" placeholder="Nickname" autocomplete="off">
 <div id="p-main" class="pane on">
-<button class="b play" id="bPlay">PLAY</button>
+<button class="b play" id="bPlay">Play</button>
 <div class="row"><button class="b" id="bCreate">Create room</button><button class="b" id="bJoin">Join room</button></div>
 </div>
 <div id="p-create" class="pane">
-<div class="lbl">ROOM MODE</div>
+<div class="lbl">Room mode</div>
 <div class="row seg"><button class="b on" id="rOn">Respawn on</button><button class="b" id="rOff">Last standing</button></div>
 <div class="lbl" id="modeDesc" style="line-height:1.6"></div>
-<button class="b play" id="bMake">CREATE</button><button class="b ghost" data-back>Back</button>
+<button class="b play" id="bMake">Create</button><button class="b ghost" data-back>Back</button>
 </div>
 <div id="p-lobby" class="pane">
-<div class="lbl">ROOM CODE</div><div id="code" class="code">----</div>
+<div class="lbl">Room code</div><div id="code" class="code">----</div>
 <div class="lbl" id="lmode"></div>
 <div id="plist" class="plist"></div>
-<button class="b play" id="bStart">START</button><div id="wait" class="lbl">Waiting for the host to start...</div><button class="b ghost" id="bLeave">Leave</button>
+<button class="b play" id="bStart">Start</button><div id="wait" class="lbl">Waiting for the host to start...</div><button class="b ghost" id="bLeave">Leave</button>
 </div>
 <div id="p-join" class="pane">
 <input id="jcode" class="codein" maxlength="4" placeholder="CODE" autocomplete="off">
-<button class="b play" id="bGo">JOIN</button><button class="b ghost" data-back>Back</button>
+<button class="b play" id="bGo">Join</button><button class="b ghost" data-back>Back</button>
 </div>
 <div id="err" class="lbl" style="color:#ff8fa3;min-height:14px"></div>
 <div id="top" class="lbl" style="line-height:1.6"></div>
 </div></div>
 <button id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M20 7h0M4 12h4M14 12h6M4 17h10M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="17" r="2"/></svg></button>
-<div id="set"><div class="card"><h3>SETTINGS</h3>
+<div id="set"><div class="card"><h3>Settings</h3>
 <div class="opt"><span>Boost button on right</span><button class="sw" data-k="right" aria-label="Boost button on right"></button></div>
 <div class="opt"><span>Minimap</span><button class="sw" data-k="map" aria-label="Minimap"></button></div>
 <div class="opt"><span>Player names</span><button class="sw" data-k="names" aria-label="Player names"></button></div>
@@ -148,11 +174,11 @@ function setHud(v){$('hud').style.display=v?'block':'none';$('boost').style.disp
 function pane(n){for(const p of document.querySelectorAll('.pane'))p.classList.toggle('on',p.id==='p-'+n)}
 const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function loadTop(){fetch('/api/leaderboard').then(r=>r.json()).then(a=>{
-  $('top').innerHTML=a.length?'TOP PLAYERS<br>'+a.slice(0,5).map((r,i)=>`${i+1}. ${esc(r.name)} \u00b7 ${r.score}`).join('<br>'):''}).catch(()=>{})}
+  $('top').innerHTML=a.length?'Top players<br>'+a.slice(0,5).map((r,i)=>`${i+1}. ${esc(r.name)} \u00b7 ${r.score}`).join('<br>'):''}).catch(()=>{})}
 let inLobby=false,lobby=null,rsp=true;
 function renderLobby(l){
   if(!inLobby)return;lobby=l;
-  $('code').textContent=l.code;$('lmode').textContent=l.respawn?'RESPAWN ON \u00b7 ENDLESS':'LAST ONE STANDING';
+  $('code').textContent=l.code;$('lmode').textContent=l.respawn?'Respawn on \u00b7 endless':'Last one standing';
   $('plist').innerHTML=l.players.map(p=>`<div><span>${esc(p.n)}</span><span style="opacity:.6">${p.id===l.host?'HOST':''}</span></div>`).join('');
   const host=l.host===myId;$('bStart').style.display=host?'':'none';$('wait').style.display=host?'none':'';
 }
@@ -199,27 +225,55 @@ boostEl.addEventListener('pointerdown',bo(true));boostEl.addEventListener('point
 addEventListener('keydown',e=>{if(e.code==='Space'&&!home&&document.activeElement.tagName!=='INPUT')boost=true});
 addEventListener('keyup',e=>{if(e.code==='Space')boost=false});
 
+// ---------- Home scene ----------
+const wv=(t,o)=>[...t].map((c,i)=>`<i style="transform:translateY(${Math.round(Math.sin((i+o)*1.1)*7)}px) rotate(${Math.round(Math.cos((i+o)*1.1)*5)}deg)">${c}</i>`).join('');
+$('logo').innerHTML=wv('Worm',0)+'<span>'+wv('Arena',3)+'</span>';
+const sc=$('scene'),sx=sc.getContext('2d'),fx=$('fx'),fc=fx.getContext('2d');let sw=0,sh=0;
+const SP=Array.from({length:36},()=>({x:Math.random(),y:Math.random(),r:1+Math.random()*2.5,v:.6+Math.random(),p:Math.random()*6}));
+function buildScene(){
+  const d=S.perf?1:Math.min(devicePixelRatio||1,2),P=Math.PI;sw=innerWidth;sh=innerHeight;
+  sc.width=sw*d;sc.height=sh*d;fx.width=sw;fx.height=sh;sx.setTransform(d,0,0,d,0,0);
+  const sy=Math.max(56,sh*.09),g=sx.createLinearGradient(0,0,0,sy);g.addColorStop(0,'#2b1b3d');g.addColorStop(1,'#8a4457');sx.fillStyle=g;sx.fillRect(0,0,sw,sy+6);
+  ['#4a2e1f','#3a2318','#2c1a12','#21130d','#180d09'].forEach((c,k)=>{const y0=sy+(sh-sy)*k/5;sx.fillStyle=c;sx.beginPath();sx.moveTo(0,sh);sx.lineTo(0,y0);for(let x=0;x<=sw;x+=16)sx.lineTo(x,y0+Math.sin(x*.015+k*2)*9+Math.sin(x*.05+k)*4);sx.lineTo(sw,sh);sx.fill()});
+  sx.fillStyle='#3f8f5a';for(let x=0;x<sw;x+=6){const h=8+Math.random()*12;sx.fillRect(x,sy-h+5,3,h)}
+  sx.strokeStyle='#6b4630';sx.lineCap='round';sx.lineWidth=3;for(let i=0;i<7;i++){let x=Math.random()*sw,y=sy;sx.beginPath();sx.moveTo(x,y);for(let j=0;j<8;j++){x+=Math.random()*24-12;y+=14+Math.random()*10;sx.lineTo(x,y)}sx.stroke()}
+  for(let i=0,n=S.perf?50:260;i<n;i++){const r=1+Math.random()*(i%9?2:7);sx.fillStyle=i%9?'rgba(255,220,180,.08)':'#5a3a2a';sx.beginPath();sx.ellipse(Math.random()*sw,sy+Math.random()*(sh-sy),r,r*.7,0,0,2*P);sx.fill()}
+  sx.strokeStyle='rgba(246,231,216,.3)';sx.lineWidth=5;const fy=sh*.88,fxp=sw*.05;for(let i=0;i<5;i++){sx.beginPath();sx.arc(fxp+i*22,fy,26-i*2,P*1.1,P*1.9);sx.stroke()}sx.beginPath();sx.moveTo(fxp-12,fy-5);sx.lineTo(fxp+100,fy-5);sx.stroke();
+  const cx=sw/2,cy=sh*.52,rg=sx.createRadialGradient(cx,cy,0,cx,cy,Math.max(sw*.8,sh*.6));rg.addColorStop(0,'rgba(10,5,4,.94)');rg.addColorStop(.5,'rgba(10,5,4,.82)');rg.addColorStop(1,'rgba(10,5,4,0)');sx.fillStyle=rg;sx.fillRect(0,sy,sw,sh);
+  sx.shadowColor='#5ef2d6';sx.shadowBlur=S.perf?0:20;
+  [[.1,.72,9],[.17,.77,6],[.9,.64,10],[.83,.72,6],[.94,.82,7],[.07,.46,6],[.92,.4,6]].forEach(([a,b,r],i)=>{const x=a*sw,y=b*sh;sx.fillStyle='#bff7ea';sx.fillRect(x-r*.25,y,r*.5,r*1.6);sx.fillStyle=i%2?'#5ef2d6':'#46c9ae';sx.beginPath();sx.arc(x,y,r,P,0);sx.fill()});
+  sx.shadowBlur=0;
+}
+function sporesTick(now){fc.clearRect(0,0,sw,sh);if(S.perf)return;fc.globalCompositeOperation='lighter';
+  for(const s of SP){s.y-=s.v*.0006;if(s.y<0)s.y=1;const x=s.x*sw+Math.sin(now/1500+s.p)*14,y=s.y*sh,a=.4+.4*Math.sin(now/600+s.p);
+    fc.fillStyle=`rgba(94,242,214,${a*.22})`;fc.beginPath();fc.arc(x,y,s.r*4,0,6.283);fc.fill();fc.fillStyle=`rgba(190,255,240,${a})`;fc.beginPath();fc.arc(x,y,s.r,0,6.283);fc.fill()}}
+addEventListener('resize',buildScene);
 // ---------- Render ----------
 function drawMap(z,cx,cy){
   ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);
   ctx.save();ctx.translate(W/2,H/2);ctx.scale(z,z);ctx.translate(-cx,-cy);
-  ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.fillStyle='#10172a';ctx.fill();
+  ctx.beginPath();ctx.arc(0,0,R,0,6.283);if(S.perf)ctx.fillStyle='#10172a';else{const g=ctx.createRadialGradient(0,0,0,0,0,R);g.addColorStop(0,'#1d1830');g.addColorStop(1,'#0d1224');ctx.fillStyle=g}ctx.fill();
   ctx.save();ctx.clip();
   const g=S.perf?1e9:100,x0=Math.floor((cx-W/2/z)/g)*g,x1=cx+W/2/z,y0=Math.floor((cy-H/2/z)/g)*g,y1=cy+H/2/z;
   ctx.strokeStyle='rgba(120,150,255,.09)';ctx.lineWidth=2;ctx.beginPath();
   for(let x=x0;x<x1;x+=g){ctx.moveTo(x,y0);ctx.lineTo(x,y1)}
   for(let y=y0;y<y1;y+=g){ctx.moveTo(x0,y);ctx.lineTo(x1,y)}
   ctx.stroke();ctx.restore();
-  ctx.lineWidth=14;ctx.strokeStyle='#ff4d6d';ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.stroke();
+  ctx.lineWidth=14;ctx.strokeStyle='#ff4d6d';if(!S.perf){ctx.shadowColor='#ff4d6d';ctx.shadowBlur=40}ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.stroke();ctx.shadowBlur=0;
 }
 function drawWorm(o){
   const r=o.r,s=o.segs;if(!s.length)return;
-  for(let i=s.length-1;i>=0;i--){ctx.fillStyle=`hsl(${o.h},80%,${i%6<3?55:45}%)`;ctx.beginPath();ctx.arc(s[i].x,s[i].y,r,0,6.283);ctx.fill()}
   const h=s[0],n=s[1]||h,a=Math.atan2(h.y-n.y,h.x-n.x);
+  if(!S.perf){ctx.lineJoin=ctx.lineCap='round';ctx.beginPath();s.forEach((q,i)=>i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y));ctx.strokeStyle=`hsla(${o.h},90%,60%,.2)`;ctx.lineWidth=r*2.8;ctx.stroke()}
+  for(let i=s.length-1;i>=0;i--){ctx.fillStyle=`hsl(${o.h},80%,${i%6<3?55:45}%)`;ctx.beginPath();ctx.arc(s[i].x,s[i].y,r,0,6.283);ctx.fill()}
+  if(!S.perf){ctx.beginPath();s.forEach((q,i)=>i?ctx.lineTo(q.x-r*.25,q.y-r*.3):ctx.moveTo(q.x-r*.25,q.y-r*.3));ctx.strokeStyle=`hsla(${o.h},95%,88%,.28)`;ctx.lineWidth=r*.7;ctx.stroke()}
+  let ta=a+Math.sin(last/700+o.h)*.9,bd=22500;
+  for(const f of food.values()){const dx=f[1]-h.x,dy=f[2]-h.y,d=dx*dx+dy*dy;if(d<bd){bd=d;ta=Math.atan2(dy,dx)}}
+  o.la=o.la===undefined?a:o.la;o.la+=Math.atan2(Math.sin(ta-o.la),Math.cos(ta-o.la))*.15;
   for(const k of[-.6,.6]){
     const ex=h.x+Math.cos(a+k)*r*.6,ey=h.y+Math.sin(a+k)*r*.6;
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex,ey,r*.3,0,6.283);ctx.fill();
-    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(ex+Math.cos(a)*r*.1,ey+Math.sin(a)*r*.1,r*.15,0,6.283);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(ex+Math.cos(o.la)*r*.13,ey+Math.sin(o.la)*r*.13,r*.15,0,6.283);ctx.fill();
   }
   if(S.names){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='700 14px Rajdhani,system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8)}
 }
@@ -239,7 +293,7 @@ function joystick(){
 function applyS(){
   document.body.classList.toggle('br',S.right);
   document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('on',!!S[b.dataset.k]));
-  resize();try{localStorage.setItem('wa',JSON.stringify(S))}catch{}
+  resize();buildScene();try{localStorage.setItem('wa',JSON.stringify(S))}catch{}
 }
 document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{S[b.dataset.k]=!S[b.dataset.k];applyS()});
 let qt=0;
@@ -252,7 +306,7 @@ $('bQuit').onclick=()=>{const q=$('bQuit');
 applyS();
 let last=performance.now(),cam={x:0,y:0},zoom=1,lbT=0;
 function frame(now){
-  const dt=Math.min((now-last)/1000,.05);last=now;const k=Math.min(1,dt*18);
+  const dt=Math.min((now-last)/1000,.05);last=now;if(home){sporesTick(now);requestAnimationFrame(frame);return}const k=Math.min(1,dt*18);
   for(const o of worms.values()){const t=o.t;for(let i=0;i<o.segs.length;i++){const s=o.segs[i];s.x+=(t[2*i]-s.x)*k;s.y+=(t[2*i+1]-s.y)*k}}
   const mine=worms.get(myId),ft=(!home&&mine&&mine.segs[0])||me,cr=home?2:10;
   cam.x+=(ft.x-cam.x)*Math.min(1,dt*cr);cam.y+=(ft.y-cam.y)*Math.min(1,dt*cr);
@@ -261,7 +315,12 @@ function frame(now){
   drawMap(zoom,cam.x,cam.y);
   const hw=W/2/zoom+20,hh=H/2/zoom+20;
   for(const f of food.values()){if(Math.abs(f[1]-cam.x)>hw||Math.abs(f[2]-cam.y)>hh)continue;
-    ctx.fillStyle=`hsl(${f[4]},90%,60%)`;ctx.beginPath();ctx.arc(f[1],f[2],f[3]>1?7:4.5,0,6.283);ctx.fill()}
+    let x=f[1],y=f[2],pu=0;const rd=f[3]>1?7:4.5;
+    for(const o of worms.values()){const q=o.segs[0];if(!q)continue;const d=Math.hypot(q.x-x,q.y-y);if(d<90){const p=1-d/90;if(p>pu){pu=p;const m=p*p*.85;x+=(q.x-x)*m;y+=(q.y-y)*m}}}
+    if(!S.perf){const t=now/500+f[0];y+=Math.sin(t)*1.6;ctx.globalCompositeOperation='lighter';
+      ctx.fillStyle=`hsla(${f[4]},95%,60%,${.12+.05*Math.sin(t)+pu*.25})`;ctx.beginPath();ctx.arc(x,y,rd*(3.2+pu*1.5),0,6.283);ctx.fill();
+      ctx.fillStyle=`hsla(${f[4]},95%,65%,${.25+pu*.3})`;ctx.beginPath();ctx.arc(x,y,rd*1.9,0,6.283);ctx.fill();ctx.globalCompositeOperation='source-over'}
+    ctx.fillStyle=`hsl(${f[4]},90%,${S.perf?60:70}%)`;ctx.beginPath();ctx.arc(x,y,rd,0,6.283);ctx.fill()}
   for(const o of worms.values())drawWorm(o);
   ctx.restore();ctx.setTransform(dpr,0,0,dpr,0,0);
   minimap();joystick();
