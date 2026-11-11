@@ -53,6 +53,19 @@ button,.b,#boost{transition:transform .15s ease,box-shadow .2s ease,background .
 .seg .b.on{background:linear-gradient(135deg,#3df5a0,#38bdf8);color:#06210f;border-color:transparent}
 .plist{display:flex;flex-direction:column;gap:6px;max-height:30vh;overflow:auto}
 .plist>div{display:flex;justify-content:space-between;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.08);animation:rise .25s ease both}
+#gear{position:fixed;z-index:8;top:calc(env(safe-area-inset-top,0px) + 40px);left:12px;width:42px;height:42px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:var(--panel);color:var(--text);display:flex;align-items:center;justify-content:center;padding:0}
+#gear:active{transform:rotate(60deg) scale(.92)}
+@media(hover:hover){#gear:hover{transform:rotate(45deg)}}
+#set{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;background:rgba(5,7,13,.8);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+#set .card{width:min(90vw,340px);padding:22px;border-radius:22px;background:rgba(20,26,44,.96);border:1px solid rgba(255,255,255,.15);display:flex;flex-direction:column;gap:16px;animation:pop .3s cubic-bezier(.2,1.4,.4,1) both}
+#set h3{margin:0;font-family:"Orbitron",system-ui,sans-serif;letter-spacing:3px;text-align:center;font-size:18px}
+.opt{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:18px}
+.sw{position:relative;flex:none;width:50px;height:28px;border-radius:14px;border:0;padding:0;background:rgba(255,255,255,.18)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#fff;transition:transform .2s ease}
+.sw.on{background:#3df5a0}.sw.on::after{transform:translateX(22px)}
+.b.danger{background:rgba(255,77,109,.16);border-color:rgba(255,77,109,.6);color:#ff8fa3}
+.b.danger.sure{background:#ff4d6d;color:#fff}
+body.br #boost{left:auto;right:22px}
 </style>
 </head>
 <body>
@@ -84,17 +97,27 @@ button,.b,#boost{transition:transform .15s ease,box-shadow .2s ease,background .
 <div id="err" class="lbl" style="color:#ff8fa3;min-height:14px"></div>
 <div id="top" class="lbl" style="line-height:1.6"></div>
 </div></div>
+<button id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M20 7h0M4 12h4M14 12h6M4 17h10M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="17" r="2"/></svg></button>
+<div id="set"><div class="card"><h3>SETTINGS</h3>
+<div class="opt"><span>Boost button on right</span><button class="sw" data-k="right" aria-label="Boost button on right"></button></div>
+<div class="opt"><span>Minimap</span><button class="sw" data-k="map" aria-label="Minimap"></button></div>
+<div class="opt"><span>Player names</span><button class="sw" data-k="names" aria-label="Player names"></button></div>
+<div class="opt"><span>Performance mode</span><button class="sw" data-k="perf" aria-label="Performance mode"></button></div>
+<button class="b danger" id="bQuit">Quit match</button>
+<button class="b" id="bClose">Close</button>
+</div></div>
 <div id="lb"></div>
 <div id="hud" style="display:none">Length <b id="len">0</b> · Kills <b id="kills">0</b> · Drag to steer · Hold BOOST<span id="room"></span></div>
 <div id="boost" style="display:none">BOOST</div>
 <div id="over"><div><h2 id="ot">You died</h2><div id="od"></div><div id="ob" class="lbl" style="line-height:1.8;margin-top:8px"></div><button id="again">Play again</button> <button id="menu" style="background:var(--panel);color:var(--text)">Menu</button></div></div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
+const S=Object.assign({right:false,map:true,names:true,perf:false},(()=>{try{return JSON.parse(localStorage.getItem('wa')||'{}')}catch{return{}}})());
 const $=id=>document.getElementById(id),cv=$('c'),ctx=cv.getContext('2d'),over=$('over');
 const sock=io();
 let R=2500,W,H,dpr,myId=0,myName='',home=true,joy=null,tgt=0,boost=false;
 const worms=new Map(),food=new Map();let me={x:0,y:0,l:0},lb=[],mm=[];
-function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr}
+function resize(){dpr=S.perf?1:Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr}
 addEventListener('resize',resize);resize();
 
 // ---------- Network ----------
@@ -182,7 +205,7 @@ function drawMap(z,cx,cy){
   ctx.save();ctx.translate(W/2,H/2);ctx.scale(z,z);ctx.translate(-cx,-cy);
   ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.fillStyle='#10172a';ctx.fill();
   ctx.save();ctx.clip();
-  const g=100,x0=Math.floor((cx-W/2/z)/g)*g,x1=cx+W/2/z,y0=Math.floor((cy-H/2/z)/g)*g,y1=cy+H/2/z;
+  const g=S.perf?1e9:100,x0=Math.floor((cx-W/2/z)/g)*g,x1=cx+W/2/z,y0=Math.floor((cy-H/2/z)/g)*g,y1=cy+H/2/z;
   ctx.strokeStyle='rgba(120,150,255,.09)';ctx.lineWidth=2;ctx.beginPath();
   for(let x=x0;x<x1;x+=g){ctx.moveTo(x,y0);ctx.lineTo(x,y1)}
   for(let y=y0;y<y1;y+=g){ctx.moveTo(x0,y);ctx.lineTo(x1,y)}
@@ -198,9 +221,9 @@ function drawWorm(o){
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex,ey,r*.3,0,6.283);ctx.fill();
     ctx.fillStyle='#111';ctx.beginPath();ctx.arc(ex+Math.cos(a)*r*.1,ey+Math.sin(a)*r*.1,r*.15,0,6.283);ctx.fill();
   }
-  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='700 14px Rajdhani,system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8);
+  if(S.names){ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='700 14px Rajdhani,system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8)}
 }
-function minimap(){
+function minimap(){if(!S.map)return;
   const s=44,mx=W-s-16,my=s+10+(parseFloat(getComputedStyle(document.documentElement).paddingTop)||0);
   ctx.fillStyle='rgba(255,255,255,.1)';ctx.beginPath();ctx.arc(mx,my,s,0,6.283);ctx.fill();
   ctx.fillStyle='rgba(255,255,255,.5)';for(const p of mm)ctx.fillRect(mx+p[0]/R*s-1.5,my+p[1]/R*s-1.5,3,3);
@@ -212,6 +235,21 @@ function joystick(){
   const dx=joy.x-joy.ox,dy=joy.y-joy.oy,l=Math.min(Math.hypot(dx,dy),48),a=Math.atan2(dy,dx);
   ctx.fillStyle='rgba(255,255,255,.45)';ctx.beginPath();ctx.arc(joy.ox+Math.cos(a)*l,joy.oy+Math.sin(a)*l,22,0,6.283);ctx.fill();
 }
+// ---------- Settings ----------
+function applyS(){
+  document.body.classList.toggle('br',S.right);
+  document.querySelectorAll('.sw').forEach(b=>b.classList.toggle('on',!!S[b.dataset.k]));
+  resize();try{localStorage.setItem('wa',JSON.stringify(S))}catch{}
+}
+document.querySelectorAll('.sw').forEach(b=>b.onclick=()=>{S[b.dataset.k]=!S[b.dataset.k];applyS()});
+let qt=0;
+function resetQuit(){const q=$('bQuit');q.classList.remove('sure');q.textContent='Quit match';clearTimeout(qt)}
+$('gear').onclick=()=>{resetQuit();$('bQuit').style.display=(!home||inLobby)?'':'none';$('set').style.display='flex'};
+$('bClose').onclick=()=>{$('set').style.display='none';resetQuit()};
+$('bQuit').onclick=()=>{const q=$('bQuit');
+  if(!q.classList.contains('sure')){q.classList.add('sure');q.textContent='Tap again to confirm';qt=setTimeout(resetQuit,3000);return}
+  resetQuit();$('set').style.display='none';$('menu').onclick()};
+applyS();
 let last=performance.now(),cam={x:0,y:0},zoom=1,lbT=0;
 function frame(now){
   const dt=Math.min((now-last)/1000,.05);last=now;const k=Math.min(1,dt*18);
