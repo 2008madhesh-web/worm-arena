@@ -92,6 +92,8 @@ body,button,input,.lbl{font-family:"Bricolage Grotesque",system-ui,sans-serif}
 .sw.on{background:var(--teal)}
 #over button{background:var(--pink);color:#4a0f1f}
 #set .card{background:#2a1a12;border-color:#5a3a2a}
+.adslot{margin:6px auto 0;width:100%;max-width:336px;min-height:90px;display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:16px 12px 16px 12px;border:2px dashed rgba(246,231,216,.25);font-size:13px;opacity:.7}
+.adslot.live{border:0;opacity:1}
 </style>
 </head>
 <body>
@@ -122,6 +124,7 @@ body,button,input,.lbl{font-family:"Bricolage Grotesque",system-ui,sans-serif}
 </div>
 <div id="err" class="lbl" style="color:#ff8fa3;min-height:14px"></div>
 <div id="top" class="lbl" style="line-height:1.6"></div>
+<div id="ad" class="adslot" aria-label="Advertisement">Ad space</div>
 </div></div>
 <button id="gear" aria-label="Settings"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M20 7h0M4 12h4M14 12h6M4 17h10M20 17h0"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="16" cy="17" r="2"/></svg></button>
 <div id="set"><div class="card"><h3>Settings</h3>
@@ -225,6 +228,16 @@ boostEl.addEventListener('pointerdown',bo(true));boostEl.addEventListener('point
 addEventListener('keydown',e=>{if(e.code==='Space'&&!home&&document.activeElement.tagName!=='INPUT')boost=true});
 addEventListener('keyup',e=>{if(e.code==='Space')boost=false});
 
+// ---------- Ads (menu + custom rooms only; the slot lives inside #home, which is hidden during matches) ----------
+// Fill these in from your AdSense account. While empty, a dashed placeholder is shown.
+const ADS={client:'',slot:''};   // e.g. client:'ca-pub-1234567890123456', slot:'1234567890'
+if(ADS.client&&ADS.slot){
+  const sc2=document.createElement('script');sc2.async=true;sc2.crossOrigin='anonymous';
+  sc2.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client='+ADS.client;document.head.appendChild(sc2);
+  const ad=$('ad');ad.className='adslot live';
+  ad.innerHTML=`<ins class="adsbygoogle" style="display:block;width:100%" data-ad-client="${ADS.client}" data-ad-slot="${ADS.slot}" data-ad-format="auto" data-full-width-responsive="true"></ins>`;
+  sc2.onload=()=>{try{(adsbygoogle=window.adsbygoogle||[]).push({})}catch{}};
+}
 // ---------- Home scene ----------
 const wv=(t,o)=>[...t].map((c,i)=>`<i style="transform:translateY(${Math.round(Math.sin((i+o)*1.1)*7)}px) rotate(${Math.round(Math.cos((i+o)*1.1)*5)}deg)">${c}</i>`).join('');
 $('logo').innerHTML=wv('Worm',0)+'<span>'+wv('Arena',3)+'</span>';
