@@ -4,13 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <title>Worm Arena</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#0b0f1a;--panel:rgba(255,255,255,.12);--text:#e8ecf5}
 html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;overscroll-behavior:none}
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
 canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
 #hud{position:fixed;left:14px;top:calc(env(safe-area-inset-top,0px) + 10px);font-size:14px;opacity:.85;pointer-events:none}
-#boost{position:fixed;right:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:84px;height:84px;border-radius:50%;background:var(--panel);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:.5px;user-select:none;-webkit-user-select:none;touch-action:none}
+#boost{position:fixed;left:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:84px;height:84px;border-radius:50%;background:var(--panel);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:.5px;user-select:none;-webkit-user-select:none;touch-action:none}
 #boost.on{background:rgba(255,200,60,.5)}
 #over{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;text-align:center;background:rgba(5,7,13,.78)}
 #over h2{margin:0 0 6px;font-size:32px}
@@ -34,6 +36,23 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:b
 .lbl,.foot{font-size:12px;opacity:.6;letter-spacing:1px}
 #over button{margin-top:14px;padding:12px 28px;border:0;border-radius:24px;background:#3df5a0;color:#06210f;font-size:16px;font-weight:700}
 #lb{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 108px);font-size:12px;text-align:right;opacity:.85;pointer-events:none;line-height:1.5;display:none}
+body,button,input{font-family:"Rajdhani",system-ui,sans-serif}
+.logo,.b,.code,.codein,#boost,#over h2,.lbl{font-family:"Orbitron",system-ui,sans-serif}
+.lbl{font-size:11px;letter-spacing:2px}
+.b{font-size:13px;letter-spacing:1.5px}
+.b.play{font-size:20px}
+#boost{font-size:14px}
+button,.b,#boost{transition:transform .15s ease,box-shadow .2s ease,background .2s ease,filter .2s ease;-webkit-tap-highlight-color:transparent}
+@media(hover:hover){.b:hover,#over button:hover{transform:translateY(-2px);filter:brightness(1.15)}}
+.b:active,#over button:active,#boost:active{transform:scale(.94)}
+#boost.on{transform:scale(.92)}
+.pane.on{animation:rise .3s ease both}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}}
+#over>div{animation:pop .35s cubic-bezier(.2,1.4,.4,1) both}
+@keyframes pop{from{opacity:0;transform:scale(.85)}}
+.seg .b.on{background:linear-gradient(135deg,#3df5a0,#38bdf8);color:#06210f;border-color:transparent}
+.plist{display:flex;flex-direction:column;gap:6px;max-height:30vh;overflow:auto}
+.plist>div{display:flex;justify-content:space-between;padding:9px 14px;border-radius:12px;background:rgba(255,255,255,.08);animation:rise .25s ease both}
 </style>
 </head>
 <body>
@@ -47,8 +66,16 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:b
 <div class="row"><button class="b" id="bCreate">Create room</button><button class="b" id="bJoin">Join room</button></div>
 </div>
 <div id="p-create" class="pane">
-<div class="lbl">YOUR ROOM CODE</div><div id="code" class="code">----</div>
-<button class="b play" id="bStartRoom">START</button><button class="b ghost" data-back>Back</button>
+<div class="lbl">ROOM MODE</div>
+<div class="row seg"><button class="b on" id="rOn">Respawn on</button><button class="b" id="rOff">Last standing</button></div>
+<div class="lbl" id="modeDesc" style="line-height:1.6"></div>
+<button class="b play" id="bMake">CREATE</button><button class="b ghost" data-back>Back</button>
+</div>
+<div id="p-lobby" class="pane">
+<div class="lbl">ROOM CODE</div><div id="code" class="code">----</div>
+<div class="lbl" id="lmode"></div>
+<div id="plist" class="plist"></div>
+<button class="b play" id="bStart">START</button><div id="wait" class="lbl">Waiting for the host to start...</div><button class="b ghost" id="bLeave">Leave</button>
 </div>
 <div id="p-join" class="pane">
 <input id="jcode" class="codein" maxlength="4" placeholder="CODE" autocomplete="off">
@@ -58,9 +85,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:b
 <div id="top" class="lbl" style="line-height:1.6"></div>
 </div></div>
 <div id="lb"></div>
-<div id="hud" style="display:none">Length <b id="len">0</b> · Drag to steer · Hold BOOST<span id="room"></span></div>
+<div id="hud" style="display:none">Length <b id="len">0</b> · Kills <b id="kills">0</b> · Drag to steer · Hold BOOST<span id="room"></span></div>
 <div id="boost" style="display:none">BOOST</div>
-<div id="over"><div><h2>You died</h2><div>Final length <b id="fin">0</b></div><button id="again">Play again</button> <button id="menu" style="background:var(--panel);color:var(--text)">Menu</button></div></div>
+<div id="over"><div><h2 id="ot">You died</h2><div id="od"></div><div id="ob" class="lbl" style="line-height:1.8;margin-top:8px"></div><button id="again">Play again</button> <button id="menu" style="background:var(--panel);color:var(--text)">Menu</button></div></div>
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const $=id=>document.getElementById(id),cv=$('c'),ctx=cv.getContext('2d'),over=$('over');
@@ -72,8 +99,11 @@ addEventListener('resize',resize);resize();
 
 // ---------- Network ----------
 sock.on('connect',()=>{$('err').textContent='';if(home){sock.emit('watch');loadTop()}});
-sock.on('disconnect',()=>{home=true;worms.clear();over.style.display='none';setHud(false);$('home').style.display='flex';pane('main');$('err').textContent='Connection lost. Reconnecting...'});
-sock.on('dead',d=>{$('fin').textContent=d.len;over.style.display='flex'});
+sock.on('disconnect',()=>{inLobby=false;home=true;worms.clear();over.style.display='none';setHud(false);$('home').style.display='flex';pane('main');$('err').textContent='Connection lost. Reconnecting...'});
+sock.on('dead',d=>{$('ot').textContent='You were eliminated';$('od').textContent=(d.by?'Killed by '+d.by:'Eliminated')+' \u00b7 Length '+d.len;$('ob').textContent=d.respawn?'':'Waiting for the match to end...';$('again').style.display=d.respawn?'':'none';over.style.display='flex'});
+sock.on('over',d=>{const won=d.winId===myId;$('ot').textContent=won?'VICTORY':(d.winner?d.winner+' wins':'Draw');$('od').textContent=won?'Last one standing':'Match over';$('ob').innerHTML='KILLS \u00b7 LENGTH<br>'+d.board.map((r,i)=>`${i+1}. ${esc(r[0])} \u00b7 ${r[1]} \u00b7 ${r[2]}`).join('<br>');$('again').style.display='none';over.style.display='flex'});
+sock.on('lobby',l=>renderLobby(l));
+sock.on('start',()=>{inLobby=false;worms.clear();joy=null;boost=false;home=false;$('home').style.display='none';over.style.display='none';setHud(true)});
 sock.on('state',s=>{
   me=s.me;lb=s.lb;mm=s.m;
   for(const f of s.fa)food.set(f[0],f);
@@ -96,23 +126,36 @@ function pane(n){for(const p of document.querySelectorAll('.pane'))p.classList.t
 const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
 function loadTop(){fetch('/api/leaderboard').then(r=>r.json()).then(a=>{
   $('top').innerHTML=a.length?'TOP PLAYERS<br>'+a.slice(0,5).map((r,i)=>`${i+1}. ${esc(r.name)} \u00b7 ${r.score}`).join('<br>'):''}).catch(()=>{})}
+let inLobby=false,lobby=null,rsp=true;
+function renderLobby(l){
+  if(!inLobby)return;lobby=l;
+  $('code').textContent=l.code;$('lmode').textContent=l.respawn?'RESPAWN ON \u00b7 ENDLESS':'LAST ONE STANDING';
+  $('plist').innerHTML=l.players.map(p=>`<div><span>${esc(p.n)}</span><span style="opacity:.6">${p.id===l.host?'HOST':''}</span></div>`).join('');
+  const host=l.host===myId;$('bStart').style.display=host?'':'none';$('wait').style.display=host?'none':'';
+}
 function enter(room){
   myName=$('nick').value.trim()||'Player';$('err').textContent='';
   sock.emit('join',{name:myName,room},res=>{
     if(!res||!res.ok){$('err').textContent=(res&&res.err)||'Could not join';return}
     R=res.R;myId=res.id;food.clear();worms.clear();for(const f of res.f)food.set(f[0],f);
-    home=false;joy=null;boost=false;$('home').style.display='none';over.style.display='none';
-    $('room').textContent=res.code==='PUBLIC'?'':' \u00b7 Room '+res.code;setHud(true);
+    joy=null;boost=false;over.style.display='none';
+    $('room').textContent=res.code==='PUBLIC'?'':' \u00b7 Room '+res.code;
+    if(res.lobby){inLobby=true;renderLobby({code:res.code,host:res.host,respawn:res.respawn,players:res.players});pane('lobby')}
+    else{home=false;$('home').style.display='none';setHud(true)}
   });
 }
+function sel(){$('rOn').classList.toggle('on',rsp);$('rOff').classList.toggle('on',!rsp);$('modeDesc').textContent=rsp?'Players keep respawning. The match never ends.':'No respawns. The last worm alive wins.'}
 $('bPlay').onclick=()=>enter('PUBLIC');
-$('bCreate').onclick=()=>sock.emit('create',null,res=>{if(res&&res.ok){$('code').textContent=res.code;pane('create')}else $('err').textContent=(res&&res.err)||'Could not create room'});
+$('bCreate').onclick=()=>{rsp=true;sel();pane('create')};
+$('rOn').onclick=()=>{rsp=true;sel()};$('rOff').onclick=()=>{rsp=false;sel()};
+$('bMake').onclick=()=>sock.emit('create',{respawn:rsp},res=>{if(res&&res.ok)enter(res.code);else $('err').textContent=(res&&res.err)||'Could not create room'});
+$('bStart').onclick=()=>sock.emit('start',null,res=>{if(res&&!res.ok)$('err').textContent=res.err});
+$('bLeave').onclick=()=>{sock.emit('watch');inLobby=false;$('err').textContent='';pane('main')};
 $('bJoin').onclick=()=>pane('join');
-$('bStartRoom').onclick=()=>enter($('code').textContent);
 $('bGo').onclick=()=>{const c=$('jcode').value.trim().toUpperCase();if(c.length===4)enter(c);else $('jcode').focus()};
 document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>pane('main'));
 $('again').onclick=()=>{over.style.display='none';sock.emit('respawn')};
-$('menu').onclick=()=>{over.style.display='none';sock.emit('watch');worms.clear();home=true;myId=0;setHud(false);$('home').style.display='flex';pane('main');loadTop()};
+$('menu').onclick=()=>{over.style.display='none';sock.emit('watch');inLobby=false;worms.clear();home=true;myId=0;setHud(false);$('home').style.display='flex';pane('main');loadTop()};
 
 // ---------- Input: floating joystick on touch, cursor on mouse, boost button/space ----------
 const boostEl=$('boost');
@@ -155,7 +198,7 @@ function drawWorm(o){
     ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex,ey,r*.3,0,6.283);ctx.fill();
     ctx.fillStyle='#111';ctx.beginPath();ctx.arc(ex+Math.cos(a)*r*.1,ey+Math.sin(a)*r*.1,r*.15,0,6.283);ctx.fill();
   }
-  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8);
+  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='700 14px Rajdhani,system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8);
 }
 function minimap(){
   const s=44,mx=W-s-16,my=s+10+(parseFloat(getComputedStyle(document.documentElement).paddingTop)||0);
@@ -184,8 +227,8 @@ function frame(now){
   for(const o of worms.values())drawWorm(o);
   ctx.restore();ctx.setTransform(dpr,0,0,dpr,0,0);
   minimap();joystick();
-  $('len').textContent=me.l;
-  if(now-lbT>500){lbT=now;$('lb').innerHTML=lb.map((r,i)=>`${i+1}. ${esc(r[0])} \u00b7 ${r[1]}`).join('<br>')}
+  $('len').textContent=me.l;$('kills').textContent=me.k||0;
+  if(now-lbT>500){lbT=now;$('lb').innerHTML='<span style="opacity:.55">LENGTH \u00b7 KILLS</span><br>'+lb.map((r,i)=>`${i+1}. ${esc(r[0])} \u00b7 ${r[1]} \u00b7 ${r[2]}`).join('<br>')}
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);
