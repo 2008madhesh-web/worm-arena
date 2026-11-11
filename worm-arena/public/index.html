@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Worm Arena</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0f1a;--panel:rgba(255,255,255,.12);--text:#e8ecf5}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden;overscroll-behavior:none}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+canvas{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#hud{position:fixed;left:14px;top:calc(env(safe-area-inset-top,0px) + 10px);font-size:14px;opacity:.85;pointer-events:none}
+#boost{position:fixed;right:22px;bottom:calc(env(safe-area-inset-bottom,0px) + 28px);width:84px;height:84px;border-radius:50%;background:var(--panel);border:2px solid rgba(255,255,255,.35);display:flex;align-items:center;justify-content:center;font-weight:700;letter-spacing:.5px;user-select:none;-webkit-user-select:none;touch-action:none}
+#boost.on{background:rgba(255,200,60,.5)}
+#over{position:fixed;inset:0;z-index:5;display:none;align-items:center;justify-content:center;text-align:center;background:rgba(5,7,13,.78)}
+#over h2{margin:0 0 6px;font-size:32px}
+#home{position:fixed;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);background:radial-gradient(ellipse at 50% 30%,rgba(61,245,160,.14),rgba(5,7,13,.82) 70%);backdrop-filter:blur(5px);-webkit-backdrop-filter:blur(5px)}
+#home .card{width:min(92vw,360px);display:flex;flex-direction:column;gap:14px;text-align:center}
+.logo{font-size:clamp(40px,12vw,56px);font-weight:900;letter-spacing:2px;line-height:1;background:linear-gradient(90deg,#3df5a0,#38bdf8,#c084fc,#3df5a0);background-size:300% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 6s linear infinite;filter:drop-shadow(0 0 18px rgba(61,245,160,.45))}
+.logo span{display:block;font-size:.62em;letter-spacing:10px;margin-top:4px}
+@keyframes flow{to{background-position:300% 0}}
+.tag{opacity:.7;letter-spacing:3px;font-size:12px;text-transform:uppercase;margin-bottom:6px}
+#home input{width:100%;box-sizing:border-box;padding:14px 16px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:var(--text);font-size:16px;text-align:center;outline:none}
+#home input:focus{border-color:#3df5a0;box-shadow:0 0 0 3px rgba(61,245,160,.2)}
+#home .codein{letter-spacing:10px;font-weight:800;text-transform:uppercase;font-size:22px}
+.pane{display:none;flex-direction:column;gap:12px}.pane.on{display:flex}
+.row{display:flex;gap:12px}.row .b{flex:1}
+.b{padding:14px;border-radius:18px;font-size:16px;font-weight:800;letter-spacing:1px;color:var(--text);background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);cursor:pointer}
+.b:active{transform:scale(.97)}
+.b.play{padding:18px;font-size:22px;color:#06210f;border:0;background:linear-gradient(135deg,#3df5a0,#38bdf8);box-shadow:0 0 28px rgba(61,245,160,.5);animation:pulse 2s ease-in-out infinite}
+.b.ghost{background:none;border-color:transparent;opacity:.7}
+@keyframes pulse{50%{box-shadow:0 0 46px rgba(56,189,248,.75)}}
+.code{font-size:44px;font-weight:900;letter-spacing:12px;padding-left:12px;color:#3df5a0;text-shadow:0 0 18px rgba(61,245,160,.6)}
+.lbl,.foot{font-size:12px;opacity:.6;letter-spacing:1px}
+#over button{margin-top:14px;padding:12px 28px;border:0;border-radius:24px;background:#3df5a0;color:#06210f;font-size:16px;font-weight:700}
+#lb{position:fixed;right:12px;top:calc(env(safe-area-inset-top,0px) + 108px);font-size:12px;text-align:right;opacity:.85;pointer-events:none;line-height:1.5;display:none}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="home"><div class="card">
+<div class="logo">WORM<span>ARENA</span></div>
+<div class="tag">Eat. Grow. Outlast.</div>
+<input id="nick" maxlength="14" placeholder="Nickname" autocomplete="off">
+<div id="p-main" class="pane on">
+<button class="b play" id="bPlay">PLAY</button>
+<div class="row"><button class="b" id="bCreate">Create room</button><button class="b" id="bJoin">Join room</button></div>
+</div>
+<div id="p-create" class="pane">
+<div class="lbl">YOUR ROOM CODE</div><div id="code" class="code">----</div>
+<button class="b play" id="bStartRoom">START</button><button class="b ghost" data-back>Back</button>
+</div>
+<div id="p-join" class="pane">
+<input id="jcode" class="codein" maxlength="4" placeholder="CODE" autocomplete="off">
+<button class="b play" id="bGo">JOIN</button><button class="b ghost" data-back>Back</button>
+</div>
+<div id="err" class="lbl" style="color:#ff8fa3;min-height:14px"></div>
+<div id="top" class="lbl" style="line-height:1.6"></div>
+</div></div>
+<div id="lb"></div>
+<div id="hud" style="display:none">Length <b id="len">0</b> · Drag to steer · Hold BOOST<span id="room"></span></div>
+<div id="boost" style="display:none">BOOST</div>
+<div id="over"><div><h2>You died</h2><div>Final length <b id="fin">0</b></div><button id="again">Play again</button> <button id="menu" style="background:var(--panel);color:var(--text)">Menu</button></div></div>
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const $=id=>document.getElementById(id),cv=$('c'),ctx=cv.getContext('2d'),over=$('over');
+const sock=io();
+let R=2500,W,H,dpr,myId=0,myName='',home=true,joy=null,tgt=0,boost=false;
+const worms=new Map(),food=new Map();let me={x:0,y:0,l:0},lb=[],mm=[];
+function resize(){dpr=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;cv.width=W*dpr;cv.height=H*dpr}
+addEventListener('resize',resize);resize();
+
+// ---------- Network ----------
+sock.on('connect',()=>{$('err').textContent='';if(home){sock.emit('watch');loadTop()}});
+sock.on('disconnect',()=>{home=true;worms.clear();over.style.display='none';setHud(false);$('home').style.display='flex';pane('main');$('err').textContent='Connection lost. Reconnecting...'});
+sock.on('dead',d=>{$('fin').textContent=d.len;over.style.display='flex'});
+sock.on('state',s=>{
+  me=s.me;lb=s.lb;mm=s.m;
+  for(const f of s.fa)food.set(f[0],f);
+  for(const id of s.fr)food.delete(id);
+  const seen=new Set();
+  for(const w of s.w){
+    seen.add(w.i);const n=w.s.length/2;let o=worms.get(w.i);
+    if(!o){o={segs:[]};worms.set(w.i,o);for(let k=0;k<n;k++)o.segs.push({x:w.s[2*k],y:w.s[2*k+1]})}
+    o.t=w.s;o.n=w.n;o.h=w.h;o.r=w.r;
+    while(o.segs.length<n){const l=o.segs[o.segs.length-1]||{x:w.s[0],y:w.s[1]};o.segs.push({x:l.x,y:l.y})}
+    o.segs.length=n;
+  }
+  for(const id of worms.keys())if(!seen.has(id))worms.delete(id);
+});
+setInterval(()=>{if(!home&&sock.connected)sock.volatile.emit('input',{a:tgt,b:boost})},50);
+
+// ---------- Home screen ----------
+function setHud(v){$('hud').style.display=v?'block':'none';$('boost').style.display=v?'flex':'none';$('lb').style.display=v?'block':'none'}
+function pane(n){for(const p of document.querySelectorAll('.pane'))p.classList.toggle('on',p.id==='p-'+n)}
+const esc=t=>String(t).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function loadTop(){fetch('/api/leaderboard').then(r=>r.json()).then(a=>{
+  $('top').innerHTML=a.length?'TOP PLAYERS<br>'+a.slice(0,5).map((r,i)=>`${i+1}. ${esc(r.name)} \u00b7 ${r.score}`).join('<br>'):''}).catch(()=>{})}
+function enter(room){
+  myName=$('nick').value.trim()||'Player';$('err').textContent='';
+  sock.emit('join',{name:myName,room},res=>{
+    if(!res||!res.ok){$('err').textContent=(res&&res.err)||'Could not join';return}
+    R=res.R;myId=res.id;food.clear();worms.clear();for(const f of res.f)food.set(f[0],f);
+    home=false;joy=null;boost=false;$('home').style.display='none';over.style.display='none';
+    $('room').textContent=res.code==='PUBLIC'?'':' \u00b7 Room '+res.code;setHud(true);
+  });
+}
+$('bPlay').onclick=()=>enter('PUBLIC');
+$('bCreate').onclick=()=>sock.emit('create',null,res=>{if(res&&res.ok){$('code').textContent=res.code;pane('create')}else $('err').textContent=(res&&res.err)||'Could not create room'});
+$('bJoin').onclick=()=>pane('join');
+$('bStartRoom').onclick=()=>enter($('code').textContent);
+$('bGo').onclick=()=>{const c=$('jcode').value.trim().toUpperCase();if(c.length===4)enter(c);else $('jcode').focus()};
+document.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>pane('main'));
+$('again').onclick=()=>{over.style.display='none';sock.emit('respawn')};
+$('menu').onclick=()=>{over.style.display='none';sock.emit('watch');worms.clear();home=true;myId=0;setHud(false);$('home').style.display='flex';pane('main');loadTop()};
+
+// ---------- Input: floating joystick on touch, cursor on mouse, boost button/space ----------
+const boostEl=$('boost');
+cv.addEventListener('pointerdown',e=>{
+  if(e.pointerType==='mouse'){steer(e);boost=true;return}
+  if(!joy)joy={id:e.pointerId,ox:e.clientX,oy:e.clientY,x:e.clientX,y:e.clientY};
+});
+cv.addEventListener('pointermove',e=>{
+  if(e.pointerType==='mouse'){steer(e);return}
+  if(joy&&joy.id===e.pointerId){joy.x=e.clientX;joy.y=e.clientY;
+    const dx=joy.x-joy.ox,dy=joy.y-joy.oy;if(Math.hypot(dx,dy)>8)tgt=Math.atan2(dy,dx)}
+});
+const end=e=>{if(e.pointerType==='mouse')boost=false;else if(joy&&joy.id===e.pointerId)joy=null};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+function steer(e){tgt=Math.atan2(e.clientY-H/2,e.clientX-W/2)}
+const bo=v=>e=>{e.preventDefault();boost=v;boostEl.classList.toggle('on',v)};
+boostEl.addEventListener('pointerdown',bo(true));boostEl.addEventListener('pointerup',bo(false));boostEl.addEventListener('pointercancel',bo(false));
+addEventListener('keydown',e=>{if(e.code==='Space'&&!home&&document.activeElement.tagName!=='INPUT')boost=true});
+addEventListener('keyup',e=>{if(e.code==='Space')boost=false});
+
+// ---------- Render ----------
+function drawMap(z,cx,cy){
+  ctx.fillStyle='#05070d';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.translate(W/2,H/2);ctx.scale(z,z);ctx.translate(-cx,-cy);
+  ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.fillStyle='#10172a';ctx.fill();
+  ctx.save();ctx.clip();
+  const g=100,x0=Math.floor((cx-W/2/z)/g)*g,x1=cx+W/2/z,y0=Math.floor((cy-H/2/z)/g)*g,y1=cy+H/2/z;
+  ctx.strokeStyle='rgba(120,150,255,.09)';ctx.lineWidth=2;ctx.beginPath();
+  for(let x=x0;x<x1;x+=g){ctx.moveTo(x,y0);ctx.lineTo(x,y1)}
+  for(let y=y0;y<y1;y+=g){ctx.moveTo(x0,y);ctx.lineTo(x1,y)}
+  ctx.stroke();ctx.restore();
+  ctx.lineWidth=14;ctx.strokeStyle='#ff4d6d';ctx.beginPath();ctx.arc(0,0,R,0,6.283);ctx.stroke();
+}
+function drawWorm(o){
+  const r=o.r,s=o.segs;if(!s.length)return;
+  for(let i=s.length-1;i>=0;i--){ctx.fillStyle=`hsl(${o.h},80%,${i%6<3?55:45}%)`;ctx.beginPath();ctx.arc(s[i].x,s[i].y,r,0,6.283);ctx.fill()}
+  const h=s[0],n=s[1]||h,a=Math.atan2(h.y-n.y,h.x-n.x);
+  for(const k of[-.6,.6]){
+    const ex=h.x+Math.cos(a+k)*r*.6,ey=h.y+Math.sin(a+k)*r*.6;
+    ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(ex,ey,r*.3,0,6.283);ctx.fill();
+    ctx.fillStyle='#111';ctx.beginPath();ctx.arc(ex+Math.cos(a)*r*.1,ey+Math.sin(a)*r*.1,r*.15,0,6.283);ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,255,255,.85)';ctx.font='bold 13px system-ui';ctx.textAlign='center';ctx.fillText(o.n,h.x,h.y-r-8);
+}
+function minimap(){
+  const s=44,mx=W-s-16,my=s+10+(parseFloat(getComputedStyle(document.documentElement).paddingTop)||0);
+  ctx.fillStyle='rgba(255,255,255,.1)';ctx.beginPath();ctx.arc(mx,my,s,0,6.283);ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,.5)';for(const p of mm)ctx.fillRect(mx+p[0]/R*s-1.5,my+p[1]/R*s-1.5,3,3);
+  if(!home){ctx.fillStyle='#3df5a0';ctx.beginPath();ctx.arc(mx+me.x/R*s,my+me.y/R*s,3.5,0,6.283);ctx.fill()}
+}
+function joystick(){
+  if(!joy)return;
+  ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=3;ctx.beginPath();ctx.arc(joy.ox,joy.oy,48,0,6.283);ctx.stroke();
+  const dx=joy.x-joy.ox,dy=joy.y-joy.oy,l=Math.min(Math.hypot(dx,dy),48),a=Math.atan2(dy,dx);
+  ctx.fillStyle='rgba(255,255,255,.45)';ctx.beginPath();ctx.arc(joy.ox+Math.cos(a)*l,joy.oy+Math.sin(a)*l,22,0,6.283);ctx.fill();
+}
+let last=performance.now(),cam={x:0,y:0},zoom=1,lbT=0;
+function frame(now){
+  const dt=Math.min((now-last)/1000,.05);last=now;const k=Math.min(1,dt*18);
+  for(const o of worms.values()){const t=o.t;for(let i=0;i<o.segs.length;i++){const s=o.segs[i];s.x+=(t[2*i]-s.x)*k;s.y+=(t[2*i+1]-s.y)*k}}
+  const mine=worms.get(myId),ft=(!home&&mine&&mine.segs[0])||me,cr=home?2:10;
+  cam.x+=(ft.x-cam.x)*Math.min(1,dt*cr);cam.y+=(ft.y-cam.y)*Math.min(1,dt*cr);
+  zoom+=(Math.max(.6,1-(home?24:me.l)*.0012)-zoom)*dt*2;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  drawMap(zoom,cam.x,cam.y);
+  const hw=W/2/zoom+20,hh=H/2/zoom+20;
+  for(const f of food.values()){if(Math.abs(f[1]-cam.x)>hw||Math.abs(f[2]-cam.y)>hh)continue;
+    ctx.fillStyle=`hsl(${f[4]},90%,60%)`;ctx.beginPath();ctx.arc(f[1],f[2],f[3]>1?7:4.5,0,6.283);ctx.fill()}
+  for(const o of worms.values())drawWorm(o);
+  ctx.restore();ctx.setTransform(dpr,0,0,dpr,0,0);
+  minimap();joystick();
+  $('len').textContent=me.l;
+  if(now-lbT>500){lbT=now;$('lb').innerHTML=lb.map((r,i)=>`${i+1}. ${esc(r[0])} \u00b7 ${r[1]}`).join('<br>')}
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
