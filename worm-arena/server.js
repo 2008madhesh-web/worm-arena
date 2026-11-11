@@ -37,7 +37,7 @@ let wid = 1;
 class Worm {
   constructor(room, name, sock) {
     this.id = wid++; this.room = room; this.name = name; this.sock = sock || null;
-    this.bot = !sock; this.hue = Math.random() * 360 | 0; this.reset();
+    this.bot = !sock; this.kills = 0; this.hue = Math.random() * 360 | 0; this.reset();
   }
   reset() {
     const a = Math.random() * 6.283, d = Math.random() * (R - 700);
@@ -65,6 +65,8 @@ class Worm {
     }
     const sp = this.boost ? 300 : 170;
     this.x += Math.cos(this.a) * sp * DT; this.y += Math.sin(this.a) * sp * DT;
+    const dd = Math.hypot(this.x, this.y), lim = R - this.r;
+    if (dd > lim) { const k = lim / dd; this.x *= k; this.y *= k; }   // wall blocks, never kills
     const s = this.segs; s[0].x = this.x; s[0].y = this.y;
     for (let i = 1; i < s.length; i++) {
       const p = s[i - 1], q = s[i], dx = p.x - q.x, dy = p.y - q.y, l = Math.hypot(dx, dy) || 1;
@@ -81,16 +83,18 @@ class Worm {
     for (let i = 1; i < o.segs.length; i++) if (Math.hypot(o.segs[i].x - this.x, o.segs[i].y - this.y) < h) return true;
     return false;
   }
-  die() {
+  die(killer) {
     this.alive = false;
+    if (killer) killer.kills++;
     for (let i = 0; i < this.segs.length; i += 2)
       this.room.addFood(this.segs[i].x + Math.random() * 8 - 4, this.segs[i].y + Math.random() * 8 - 4, 3, this.hue);
-    this.room.onDeath(this);
+    this.room.onDeath(this, killer);
   }
 }
 
 class Room {
-  constructor(code, bots) {
+  constructor(code, bots, opts = {}) {
+    this.respawn = opts.respawn !== false; this.priv = code !== 'PUBLIC'; this.state = this.priv ? 'lobby' : 'playing'; this.host = 0;
     this.code = code; this.worms = new Map(); this.food = new Map(); this.specs = new Set();
     this.nid = 1; this.n = 0; this.added = []; this.removed = []; this.emptySince = Date.now();
     for (let i = 0; i < MAXFOOD; i++) this.spawnFood();
@@ -103,12 +107,29 @@ class Room {
   }
   spawnFood() { const a = Math.random() * 6.283, d = Math.sqrt(Math.random()) * (R - 40); this.addFood(Math.cos(a) * d, Math.sin(a) * d, 1); }
   addBot() { const w = new Worm(this, NAMES[Math.random() * NAMES.length | 0], null); this.worms.set(w.id, w); }
-  addPlayer(sock, name) { const w = new Worm(this, name, sock); this.worms.set(w.id, w); this.emptySince = 0; return w; }
-  onDeath(w) {
+  addPlayer(sock, name) {
+    const w = new Worm(this, name, sock); this.worms.set(w.id, w); this.emptySince = 0;
+    if (this.state === 'lobby') w.alive = false;
+    if (!this.host) this.host = w.id;
+    return w;
+  }
+  emitLobby() {
+    const players = this.players().map(w => ({ id: w.id, n: w.name }));
+    for (const p of this.players()) p.sock.emit('lobby', { code: this.code, host: this.host, respawn: this.respawn, players });
+  }
+  start() {
+    this.state = 'playing';
+    for (const p of this.players()) { p.reset(); p.kills = 0; p.sock.emit('start'); }
+  }
+  onLeave(w) {
+    if (this.host === w.id) { const p = this.players()[0]; this.host = p ? p.id : 0; }
+    if (this.state === 'lobby') this.emitLobby();
+  }
+  onDeath(w, killer) {
     if (w.bot) {
       this.worms.delete(w.id);
       setTimeout(() => { if (rooms.get(this.code) === this) this.addBot(); }, 2000);
-    } else if (w.sock) { w.sock.emit('dead', { len: w.len }); saveScore(w.name, w.len); }
+    } else if (w.sock) { w.sock.emit('dead', { len: w.len, by: killer ? killer.name : null, respawn: this.respawn }); if (!this.priv) saveScore(w.name, w.len); }
   }
   eat(w) {
     const rr = w.r + 8;
@@ -119,15 +140,23 @@ class Room {
   }
   update() {
     const all = []; for (const w of this.worms.values()) if (w.alive) all.push(w);
-    for (const w of all) { w.step(); this.eat(w); if (Math.hypot(w.x, w.y) > R - w.r * .6) w.die(); }
-    for (const w of all) if (w.alive) for (const o of all) if (o !== w && o.alive && w.hits(o)) { w.die(); break; }
+    for (const w of all) { w.step(); this.eat(w); }
+    for (const w of all) if (w.alive) for (const o of all) if (o !== w && o.alive && w.hits(o)) { w.die(o); break; }
     while (this.food.size < MAXFOOD) this.spawnFood();
+    if (this.priv && !this.respawn && this.state === 'playing') {   // last one standing
+      const ps = this.players(), live = ps.filter(p => p.alive);
+      if (live.length <= 1) {
+        this.state = 'over';
+        const win = live[0] || null, board = ps.map(p => [p.name, p.kills, p.len]).sort((a, b) => b[1] - a[1]);
+        for (const p of ps) p.sock.emit('over', { winner: win ? win.name : null, winId: win ? win.id : 0, board });
+      }
+    }
     if (++this.n % 2 === 0) this.broadcast();
     if (!this.emptySince && !this.players().length && this.code !== 'PUBLIC') this.emptySince = Date.now();
   }
   broadcast() {
     const alive = []; for (const w of this.worms.values()) if (w.alive) alive.push(w);
-    const lb = alive.slice().sort((a, b) => b.len - a.len).slice(0, 5).map(w => [w.name, w.len]);
+    const lb = alive.slice().sort((a, b) => b.len - a.len).slice(0, 5).map(w => [w.name, w.len, w.kills]);
     const m = alive.map(w => [Math.round(w.x), Math.round(w.y)]);
     const near = (w, vx, vy) => {
       if (Math.hypot(w.x - vx, w.y - vy) < VIEW) return true;
@@ -141,7 +170,7 @@ class Room {
     });
     const fa = this.added, fr = this.removed;
     for (const w of this.worms.values()) if (w.sock)
-      w.sock.emit('state', { me: { x: Math.round(w.x), y: Math.round(w.y), l: w.len }, w: view(w.x, w.y), fa, fr, lb, m });
+      w.sock.emit('state', { me: { x: Math.round(w.x), y: Math.round(w.y), l: w.len, k: w.kills }, w: view(w.x, w.y), fa, fr, lb, m });
     if (this.specs.size) {
       const b = alive.find(x => x.bot) || alive[0], vx = b ? b.x : 0, vy = b ? b.y : 0;
       const pkt = { me: { x: Math.round(vx), y: Math.round(vy), l: 0 }, w: view(vx, vy), fa, fr, lb, m };
@@ -165,31 +194,38 @@ setInterval(() => {   // delete private rooms that stayed empty for 60s
 io.on('connection', sock => {
   let w = null, room = null;
   const leave = () => {
-    if (room) { room.specs.delete(sock); if (w) { w.sock = null; if (w.alive) w.die(); room.worms.delete(w.id); } }
+    if (room) { room.specs.delete(sock); if (w) { w.sock = null; if (w.alive) w.die(); room.worms.delete(w.id); room.onLeave(w); } }
     w = null; room = null;
   };
   sock.on('watch', () => { leave(); room = rooms.get('PUBLIC'); room.specs.add(sock); });
-  sock.on('create', (_, cb) => {
+  sock.on('create', (d, cb) => {
     if (typeof cb !== 'function') return;
     if (rooms.size >= MAX_ROOMS) return cb({ ok: false, err: 'Server busy, try again soon' });
-    const code = newCode(); rooms.set(code, new Room(code, 0)); cb({ ok: true, code });
+    const code = newCode(); rooms.set(code, new Room(code, 0, { respawn: !(d && d.respawn === false) })); cb({ ok: true, code });
   });
   sock.on('join', (d, cb) => {
     if (typeof cb !== 'function') return;
     leave();
     const code = String(d && d.room || 'PUBLIC').toUpperCase().slice(0, 6), rm = rooms.get(code);
     if (!rm) return cb({ ok: false, err: 'Room not found' });
+    if (rm.priv && rm.state !== 'lobby') return cb({ ok: false, err: 'Game already started' });
     if (rm.players().length >= MAX_PLAYERS) return cb({ ok: false, err: 'Room is full' });
     const name = String(d && d.name || 'Player').replace(/[<>&"']/g, '').trim().slice(0, 14) || 'Player';
     room = rm; w = rm.addPlayer(sock, name);
-    cb({ ok: true, code, id: w.id, R, f: [...rm.food.values()] });
+    cb({ ok: true, code, id: w.id, R, f: [...rm.food.values()], lobby: rm.state === 'lobby', host: rm.host, respawn: rm.respawn, players: rm.players().map(p => ({ id: p.id, n: p.name })) });
+    if (rm.state === 'lobby') rm.emitLobby();
   });
   sock.on('input', d => {
     if (!w || !w.alive || !d) return;
     if (Number.isFinite(d.a)) w.target = d.a;
     w.boost = !!d.b;
   });
-  sock.on('respawn', () => { if (w && !w.alive) w.reset(); });
+  sock.on('respawn', () => { if (w && !w.alive && room.respawn && room.state === 'playing') w.reset(); });
+  sock.on('start', (_, cb) => {
+    if (!w || !room || room.state !== 'lobby' || room.host !== w.id) return;
+    if (room.players().length < 2) return typeof cb === 'function' && cb({ ok: false, err: 'Need at least 2 players' });
+    room.start(); if (typeof cb === 'function') cb({ ok: true });
+  });
   sock.on('leave', leave);
   sock.on('disconnect', leave);
 });
